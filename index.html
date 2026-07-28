@@ -1,1 +1,655 @@
-kk
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>admin𓂀 AI</title>
+  <link rel="manifest" href="manifest.json">
+  
+  <!-- Supabase JS Client CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    :root {
+      --bg-black: #0a0a0a;
+      --bg-card: #141414;
+      --red-dark: #8b0000;
+      --red-accent: #b22222;
+      --text-gray: #a0a0a0;
+      --text-light: #ececec;
+      --border-color: #262626;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-black);
+      color: var(--text-light);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Top Navigation Header */
+    header {
+      height: 60px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-color);
+      background-color: var(--bg-black);
+      z-index: 10;
+    }
+
+    .menu-btn {
+      background: none;
+      border: none;
+      color: var(--text-light);
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+
+    .brand-title {
+      font-weight: bold;
+      font-size: 1.2rem;
+      color: var(--text-light);
+      letter-spacing: 1px;
+    }
+
+    /* Sidebar Drawer (Swipe Menu) */
+    .drawer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .drawer-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .sidebar {
+      position: fixed;
+      top: 0;
+      right: -280px;
+      width: 280px;
+      height: 100%;
+      background-color: var(--bg-card);
+      border-left: 1px solid var(--border-color);
+      z-index: 101;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+      padding: 20px 16px;
+    }
+
+    .drawer-overlay.active .sidebar {
+      transform: translateX(-280px);
+    }
+
+    .new-chat-btn {
+      background-color: var(--red-dark);
+      color: #fff;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      margin-bottom: 20px;
+    }
+
+    .chats-header {
+      color: var(--text-gray);
+      font-size: 0.85rem;
+      margin-bottom: 10px;
+    }
+
+    .chats-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .sidebar-footer {
+      border-top: 1px solid var(--border-color);
+      padding-top: 15px;
+      margin-top: 10px;
+    }
+
+    .settings-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-light);
+      background: #1a1a1a;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      background-color: var(--red-dark);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+
+    /* Main Chat Container */
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .message {
+      max-width: 85%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      position: relative;
+      word-break: break-word;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background-color: var(--red-dark);
+      color: #fff;
+      border-bottom-left-radius: 2px;
+    }
+
+    .message.ai {
+      align-self: flex-start;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-light);
+      border-bottom-right-radius: 2px;
+    }
+
+    .message-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: var(--text-gray);
+    }
+
+    .action-icon {
+      cursor: pointer;
+    }
+
+    /* Input Bar */
+    .input-container {
+      padding: 12px 16px;
+      background-color: var(--bg-black);
+      border-top: 1px solid var(--border-color);
+    }
+
+    .input-box {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 25px;
+      display: flex;
+      align-items: center;
+      padding: 6px 12px;
+      gap: 8px;
+    }
+
+    .input-box input {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text-light);
+      padding: 8px;
+      font-size: 0.95rem;
+    }
+
+    .input-btn {
+      background: none;
+      border: none;
+      color: var(--text-gray);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 6px;
+      transition: color 0.2s;
+    }
+
+    .input-btn:active {
+      color: var(--red-accent);
+    }
+
+    .input-btn.call-btn {
+      color: var(--red-accent);
+    }
+
+    /* Popup Action Selector (+ Button) */
+    .action-modal {
+      position: fixed;
+      bottom: -100%;
+      left: 0;
+      width: 100%;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border-color);
+      border-radius: 20px 20px 0 0;
+      padding: 20px;
+      z-index: 90;
+      transition: bottom 0.3s ease;
+    }
+
+    .action-modal.active {
+      bottom: 0;
+    }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      text-align: center;
+    }
+
+    .action-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: var(--text-light);
+      cursor: pointer;
+    }
+
+    .action-item i {
+      width: 48px;
+      height: 48px;
+      background: #1a1a1a;
+      border: 1px solid var(--border-color);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      color: var(--red-accent);
+    }
+
+    /* Live Voice Overlay UI */
+    .voice-call-overlay {
+      position: fixed;
+      inset: 0;
+      background-color: var(--bg-black);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 60px 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .voice-call-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .voice-status {
+      font-size: 1.1rem;
+      color: var(--text-gray);
+      text-align: center;
+    }
+
+    .voice-wave {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--red-dark) 0%, transparent 70%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.6; }
+      50% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.6; }
+    }
+
+    .voice-controls {
+      display: flex;
+      gap: 30px;
+    }
+
+    .call-ctl-btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: none;
+      font-size: 1.3rem;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .call-hold { background-color: #333; }
+    .call-end { background-color: var(--red-dark); }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <button class="menu-btn" id="openDrawer"><i class="fa-solid fa-bars"></i></button>
+    <div class="brand-title">𝗮𝗱𝗺𝗶𝗻𓂀</div>
+    <a href="message.html" style="color: var(--text-light); text-decoration: none; position: relative;">
+      <i class="fa-regular fa-bell"></i>
+      <span id="notifBadge" style="position: absolute; top: -5px; right: -5px; background: var(--red-dark); color: white; font-size: 0.65rem; width: 15px; height: 15px; border-radius: 50%; display: none; align-items: center; justify-content: center;">1</span>
+    </a>
+  </header>
+
+  <!-- Sidebar / Drawer (Swipe supported) -->
+  <div class="drawer-overlay" id="drawerOverlay">
+    <div class="sidebar" id="sidebar">
+      <button class="new-chat-btn" id="newChatBtn">
+        <i class="fa-solid fa-plus"></i> دردشة جديدة
+      </button>
+
+      <div class="chats-header">الدردشات الأخيرة</div>
+      <div class="chats-list" id="chatsList">
+        <!-- Dynamically Populated Conversations -->
+      </div>
+
+      <div class="sidebar-footer">
+        <a href="Preparations.html" class="settings-link">
+          <div class="user-avatar" id="userInitial">U</div>
+          <div style="flex: 1;">
+            <div style="font-size: 0.9rem; font-weight: bold;">الإعدادات</div>
+            <div style="font-size: 0.75rem; color: var(--text-gray);" id="userEmailDisplay">جاري التحميل...</div>
+          </div>
+          <i class="fa-solid fa-gear" style="color: var(--text-gray);"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Messages Container -->
+  <main id="chatContainer">
+    <div class="message ai">
+      مرحباً بك! أنا المساعد الذكي 𝗮𝗱𝗺𝗶𝗻𓂀. كيف يمكنني مساعدتك اليوم؟
+    </div>
+  </main>
+
+  <!-- Bottom Input Bar -->
+  <div class="input-container">
+    <div class="input-box">
+      <button class="input-btn" id="toggleActions"><i class="fa-solid fa-paperclip"></i></button>
+      <input type="text" id="userInput" placeholder="إسأل 𝗮𝗱𝗺𝗶𝗻𓂀..." />
+      <button class="input-btn" id="sttBtn" title="تحويل الصوت لنص"><i class="fa-solid fa-microphone"></i></button>
+      <button class="input-btn call-btn" id="dynamicActionBtn" title="مكالمة صوتية"><i class="fa-solid fa-phone" id="dynamicActionIcon"></i></button>
+    </div>
+  </div>
+
+  <!-- Attachment Options Drawer Modal -->
+  <div class="action-modal" id="actionModal">
+    <div class="action-grid">
+      <div class="action-item" onclick="triggerFileInput('camera')">
+        <i class="fa-solid fa-camera"></i>
+        <span>الكاميرا</span>
+      </div>
+      <div class="action-item" onclick="triggerFileInput('gallery')">
+        <i class="fa-solid fa-image"></i>
+        <span>الصور</span>
+      </div>
+      <div class="action-item" onclick="triggerFileInput('file')">
+        <i class="fa-solid fa-file"></i>
+        <span>الملفات</span>
+      </div>
+    </div>
+    <input type="file" id="hiddenFileInput" style="display: none;" />
+  </div>
+
+  <!-- Live Voice Interface Modal -->
+  <div class="voice-call-overlay" id="voiceOverlay">
+    <div class="voice-status" id="callStatus">جاري الاتصال بـ 𝗮𝗱𝗺𝗶𝗻𓂀...</div>
+    <div class="voice-wave">
+      <i class="fa-solid fa-brain" style="font-size: 2.5rem; color: #fff;"></i>
+    </div>
+    <div class="voice-controls">
+      <button class="call-ctl-btn call-hold" id="pauseCallBtn"><i class="fa-solid fa-pause"></i></button>
+      <button class="call-ctl-btn call-end" id="endCallBtn"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  </div>
+
+  <!-- Main Javascript Execution -->
+  <script>
+    // 1. التأكد من تسجيل الدخول
+    const currentUserId = localStorage.getItem('user_id');
+    if (!currentUserId) {
+      window.location.href = 'login.html';
+    }
+
+    // 2. الربط التلقائي بـ Supabase عبر api/Token.js
+    let supabase = null;
+
+    async function initSupabase() {
+      try {
+        const res = await fetch('/api/Token.js');
+        const tokens = await res.json();
+
+        if (tokens.SUPABASE_URL && tokens.SUPABASE_ANON_KEY) {
+          supabase = window.supabase.createClient(tokens.SUPABASE_URL, tokens.SUPABASE_ANON_KEY);
+          console.log('✅ تم الربط بـ Supabase بنجاح عبر Token.js');
+          loadUserData();
+        } else {
+          console.error('❌ المفاتيح ناقصة فـ Vercel');
+        }
+      } catch (err) {
+        console.error('❌ فشل جلب التوكنات:', err);
+      }
+    }
+
+    // جلب بيانات المستخدم من Vip_users
+    async function loadUserData() {
+      if (!supabase || !currentUserId) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('Vip_users')
+          .select('email')
+          .eq('id', currentUserId)
+          .single();
+
+        if (data && data.email) {
+          document.getElementById('userEmailDisplay').textContent = data.email;
+          document.getElementById('userInitial').textContent = data.email.charAt(0).toUpperCase();
+        }
+      } catch (e) {
+        console.error('خطأ فـ تحميل بيانات البروفايل:', e);
+      }
+    }
+
+    // تشغيل الربط فور فتح الصفحة
+    window.addEventListener('DOMContentLoaded', () => {
+      initSupabase();
+      checkNewMessages();
+    });
+
+    // 2b. التحقق من وجود جديد فـ message.html وإظهار البادج فقط إلى كاين شي حاجة جديدة
+    function checkNewMessages() {
+      const notifBadge = document.getElementById('notifBadge');
+      // العلم كيتسجل من صفحة message.html نفسها (localStorage: hasNewMessage = 'true')
+      const hasNewMessage = localStorage.getItem('hasNewMessage') === 'true';
+      notifBadge.style.display = hasNewMessage ? 'flex' : 'none';
+    }
+
+    // 3. التحكم فـ القائمة الجانبية والإيماءات (Swipe)
+    const drawerOverlay = document.getElementById('drawerOverlay');
+    const openDrawer = document.getElementById('openDrawer');
+
+    openDrawer.addEventListener('click', () => drawerOverlay.classList.add('active'));
+    drawerOverlay.addEventListener('click', (e) => {
+      if (e.target === drawerOverlay) drawerOverlay.classList.remove('active');
+    });
+
+    let touchStartX = 0;
+    document.addEventListener('touchstart', e => touchStartX = e.touches[0].clientX);
+    document.addEventListener('touchend', e => {
+      let touchEndX = e.changedTouches[0].clientX;
+      if (touchStartX - touchEndX > 70) drawerOverlay.classList.remove('active'); // سحب لليسار للإغلاق
+      if (touchEndX - touchStartX > 70 && touchStartX < 40) drawerOverlay.classList.add('active'); // سحب لليمين للفتح
+    });
+
+    // 4. نافذة المرفقات (+ Button)
+    const actionModal = document.getElementById('actionModal');
+    document.getElementById('toggleActions').addEventListener('click', () => {
+      actionModal.classList.toggle('active');
+    });
+
+    function triggerFileInput(type) {
+      const fileInput = document.getElementById('hiddenFileInput');
+      if (type === 'camera') fileInput.setAttribute('capture', 'environment');
+      else fileInput.removeAttribute('capture');
+      fileInput.click();
+      actionModal.classList.remove('active');
+    }
+
+    // 5. تحويل الصوت لنص (Microphone Button)
+    const sttBtn = document.getElementById('sttBtn');
+    const userInput = document.getElementById('userInput');
+    
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'ar-SA';
+
+      sttBtn.addEventListener('click', () => {
+        recognition.start();
+        sttBtn.style.color = 'var(--red-dark)';
+      });
+
+      recognition.onresult = (e) => {
+        userInput.value = e.results[0][0].transcript;
+        sttBtn.style.color = 'var(--text-gray)';
+        updateDynamicActionBtn();
+      };
+
+      recognition.onerror = () => sttBtn.style.color = 'var(--text-gray)';
+    }
+
+    // 6. واجهة المكالمة الصوتية المباشرة (Live Voice UI)
+    const voiceOverlay = document.getElementById('voiceOverlay');
+    document.getElementById('endCallBtn').addEventListener('click', () => voiceOverlay.classList.remove('active'));
+
+    // 6b. الزر الديناميكي: هاتف (لما الرسالة فارغة) / إرسال (لما كاين نص مكتوب)
+    const dynamicActionBtn = document.getElementById('dynamicActionBtn');
+    const dynamicActionIcon = document.getElementById('dynamicActionIcon');
+
+    function updateDynamicActionBtn() {
+      const hasText = userInput.value.trim().length > 0;
+      if (hasText) {
+        dynamicActionIcon.className = 'fa-solid fa-paper-plane';
+        dynamicActionBtn.title = 'إرسال';
+        dynamicActionBtn.classList.remove('call-btn');
+        dynamicActionBtn.style.color = 'var(--red-accent)';
+      } else {
+        dynamicActionIcon.className = 'fa-solid fa-phone';
+        dynamicActionBtn.title = 'مكالمة صوتية';
+        dynamicActionBtn.classList.add('call-btn');
+        dynamicActionBtn.style.color = '';
+      }
+    }
+
+    userInput.addEventListener('input', updateDynamicActionBtn);
+
+    dynamicActionBtn.addEventListener('click', () => {
+      const hasText = userInput.value.trim().length > 0;
+      if (hasText) {
+        sendMessage();
+      } else {
+        voiceOverlay.classList.add('active');
+      }
+    });
+
+    // نرسل الرسالة كذلك عند الضغط على Enter
+    userInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && userInput.value.trim().length > 0) {
+        sendMessage();
+      }
+    });
+
+    // 7. إضافة الرسائل للواجهة
+    function appendMessage(text, sender) {
+      const chatContainer = document.getElementById('chatContainer');
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `message ${sender}`;
+      
+      msgDiv.innerHTML = `
+        <div>${text}</div>
+        <div class="message-actions">
+          <span class="action-icon" onclick="navigator.clipboard.writeText('${text.replace(/'/g, "\\'")}')"><i class="fa-regular fa-copy"></i> نسخ</span>
+        </div>
+      `;
+
+      chatContainer.appendChild(msgDiv);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // 8. إرسال الرسالة لـ api/Chat.bot
+    async function sendMessage() {
+      const text = userInput.value.trim();
+      if (!text) return;
+
+      appendMessage(text, 'user');
+      userInput.value = '';
+      updateDynamicActionBtn();
+
+      try {
+        const response = await fetch('/api/Chat.bot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userPrompt: text,
+            user_id: currentUserId
+          })
+        });
+        const data = await response.json();
+        appendMessage(data.text || "حدث خطأ في الاستجابة", 'ai');
+      } catch (err) {
+        appendMessage("تعذر الاتصال بالسيرفر", 'ai');
+      }
+    }
+  </script>
+</body>
+</html>
