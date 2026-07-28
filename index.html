@@ -461,7 +461,10 @@
     }
 
     // 2. الربط التلقائي بـ Supabase عبر api/Token.js
-    let supabase = null;
+    // ⚠️ سميناه sbClient (ماشي supabase) حيت "supabase" مستعمل من قبل
+    // مكتبة Supabase نفسها (window.supabase) وكيوقع تعارض (SyntaxError)
+    // كيوقف تنفيذ الصفحة كاملة إلى سميناه بنفس الإسم.
+    let sbClient = null;
 
     async function initSupabase() {
       try {
@@ -469,7 +472,7 @@
         const tokens = await res.json();
 
         if (tokens.SUPABASE_URL && tokens.SUPABASE_ANON_KEY) {
-          supabase = window.supabase.createClient(tokens.SUPABASE_URL, tokens.SUPABASE_ANON_KEY);
+          sbClient = window.supabase.createClient(tokens.SUPABASE_URL, tokens.SUPABASE_ANON_KEY);
           console.log('✅ تم الربط بـ Supabase بنجاح عبر Token.js');
           loadUserData();
         } else {
@@ -480,13 +483,13 @@
       }
     }
 
-    // جلب بيانات المستخدم من Vip_users
+    // جلب بيانات المستخدم من vip_users
     async function loadUserData() {
-      if (!supabase || !currentUserId) return;
+      if (!sbClient || !currentUserId) return;
       
       try {
-        const { data, error } = await supabase
-          .from('Vip_users')
+        const { data, error } = await sbClient
+          .from('vip_users')
           .select('email')
           .eq('id', currentUserId)
           .single();
