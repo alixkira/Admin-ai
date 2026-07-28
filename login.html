@@ -269,14 +269,22 @@
 
     // 4. الضغط على زر Google
     googleBtn.addEventListener('click', async () => {
-      if (!supabase) return;
-      setLoading(true, 'جاري التوجيه لـ Google...');
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: window.location.href }
-      });
-      if (error) {
-        setStatus('تعذر فتح تسجيل الدخول', true);
+      if (!supabase) {
+        setStatus('⚠️ الاتصال بـ Supabase ماكملش بعد، جرب تسنى شوية وعاود', true);
+        return;
+      }
+      try {
+        setLoading(true, 'جاري التوجيه لـ Google...');
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo: window.location.href }
+        });
+        if (error) {
+          setStatus('⚠️ خطأ: ' + error.message, true);
+          setLoading(false);
+        }
+      } catch (err) {
+        setStatus('⚠️ خطأ غير متوقع: ' + err.message, true);
         setLoading(false);
       }
     });
@@ -285,4 +293,3 @@
   </script>
 </body>
 </html>
-
