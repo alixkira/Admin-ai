@@ -161,10 +161,19 @@ export default async function handler(req, res) {
     // ═══════════════════════════════════════════
     // 6. تسجيل السؤال والجواب فـ chat_messages
     // ═══════════════════════════════════════════
-    await sbAdmin.from('chat_messages').insert([
+    const { error: insertError } = await sbAdmin.from('chat_messages').insert([
       { user_id, sender: 'user', message: userPrompt },
       { user_id, sender: 'ai', message: aiText }
     ]);
+
+    if (insertError) {
+      console.error('❌ خطأ فـ تسجيل الرسالة فـ chat_messages:', insertError);
+      // كنكملو ونرجعو الجواب للمستخدم رغم فشل التسجيل، ولكن كنبينو الخطأ فالنص
+      return res.status(200).json({
+        text: aiText,
+        warning: '⚠️ الجواب وصل، ولكن ماتسجلش فـ قاعدة البيانات: ' + insertError.message
+      });
+    }
 
     // ═══════════════════════════════════════════
     // 7. الجواب النهائي للفرونت - النص فقط
