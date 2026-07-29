@@ -133,8 +133,24 @@ export default async function handler(req, res) {
 
     if (!geminiRes.ok) {
       console.error('❌ خطأ من Gemini:', geminiData);
+
+      // إلى فشل الموديل، نجيبو لائحة الموديلات المتوفرة الحقيقية لهاد المفتاح
+      let availableModels = '';
+      try {
+        const listRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`
+        );
+        const listData = await listRes.json();
+        const names = (listData?.models || [])
+          .filter((m) => (m.supportedGenerationMethods || []).includes('generateContent'))
+          .map((m) => m.name.replace('models/', ''));
+        availableModels = ' | الموديلات المتوفرة فعليا: ' + (names.join(', ') || 'ماكاين حتى واحد');
+      } catch (listErr) {
+        availableModels = ' | (تعذر جلب لائحة الموديلات)';
+      }
+
       return res.status(502).json({
-        error: 'خطأ من Gemini: ' + (geminiData?.error?.message || JSON.stringify(geminiData))
+        error: 'خطأ من Gemini: ' + (geminiData?.error?.message || JSON.stringify(geminiData)) + availableModels
       });
     }
 
