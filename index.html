@@ -651,6 +651,9 @@
 
         if (data.text) {
           appendMessage(data.text, 'ai');
+          if (data.warning) {
+            appendMessage(data.warning, 'ai');
+          }
         } else {
           // كنبينو الخطأ الحقيقي مباشرة فالشات بلا ما نحتاجو Developer Tools
           appendMessage('⚠️ خطأ من السيرفر (status ' + response.status + '): ' + (data.error || 'بلا تفاصيل'), 'ai');
@@ -662,3 +665,4 @@
   </script>
 </body>
 </html>
+٩
