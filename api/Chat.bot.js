@@ -133,7 +133,9 @@ export default async function handler(req, res) {
 
     if (!geminiRes.ok) {
       console.error('❌ خطأ من Gemini:', geminiData);
-      return res.status(502).json({ error: 'تعذر الحصول على جواب من الذكاء الاصطناعي' });
+      return res.status(502).json({
+        error: 'خطأ من Gemini: ' + (geminiData?.error?.message || JSON.stringify(geminiData))
+      });
     }
 
     const aiText =
@@ -155,7 +157,6 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error('❌ خطأ فـ Chat.bot:', err);
-    return res.status(500).json({ error: 'وقع خطأ غير متوقع فـ السيرفر' });
+    return res.status(500).json({ error: 'خطأ فالسيرفر: ' + err.message });
   }
 }
-
