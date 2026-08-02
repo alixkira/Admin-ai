@@ -406,9 +406,6 @@
 
   <!-- Main Messages Container -->
   <main id="chatContainer">
-    <div class="message ai">
-      مرحباً بك! أنا المساعد الذكي 𝗮𝗱𝗺𝗶𝗻𓂀. كيف يمكنني مساعدتك اليوم؟
-    </div>
   </main>
 
   <!-- Bottom Input Bar -->
@@ -460,6 +457,8 @@
       window.location.href = 'login.html';
     }
 
+    const chatContainer = document.getElementById('chatContainer');
+
     // 2. الربط التلقائي بـ Supabase عبر api/Token.js
     // ⚠️ سميناه sbClient (ماشي supabase) حيت "supabase" مستعمل من قبل
     // مكتبة Supabase نفسها (window.supabase) وكيوقع تعارض (SyntaxError)
@@ -498,6 +497,14 @@
           document.getElementById('userEmailDisplay').textContent = data.email;
           document.getElementById('userInitial').textContent = data.email.charAt(0).toUpperCase();
         }
+
+        // نجيبو لائحة المحادثات، ونحملو آخر محادثة كانت مفتوحة (إلى كانت)
+        await loadConversationsList();
+        if (currentConversationId) {
+          switchConversation(currentConversationId);
+        } else {
+          appendMessage('مرحباً بك! أنا المساعد الذكي 𝗮𝗱𝗺𝗶𝗻𓂀. كيف يمكنني مساعدتك اليوم؟', 'ai');
+        }
       } catch (e) {
         console.error('خطأ فـ تحميل بيانات البروفايل:', e);
       }
@@ -517,11 +524,81 @@
       notifBadge.style.display = hasNewMessage ? 'flex' : 'none';
     }
 
+    // 2c. متغير المحادثة الحالية (null = محادثة جديدة لسه ماتخلقاتش)
+    let currentConversationId = localStorage.getItem('current_conversation_id') || null;
+
+    // جلب لائحة المحادثات وعرضها فـ القائمة الجانبية
+    async function loadConversationsList() {
+      if (!sbClient || !currentUserId) return;
+      const chatsListEl = document.getElementById('chatsList');
+
+      try {
+        const { data: convs, error } = await sbClient
+          .from('conversations')
+          .select('id, title, pinned, updated_at')
+          .eq('user_id', currentUserId)
+          .order('pinned', { ascending: false })
+          .order('updated_at', { ascending: false });
+
+        if (error || !convs) {
+          chatsListEl.innerHTML = '';
+          return;
+        }
+
+        chatsListEl.innerHTML = '';
+        convs.forEach((conv) => {
+          const item = document.createElement('div');
+          item.style.cssText = 'padding:10px;border-radius:8px;cursor:pointer;font-size:0.85rem;color:var(--text-light);display:flex;align-items:center;gap:6px;';
+          item.innerHTML = (conv.pinned ? '<i class="fa-solid fa-thumbtack" style="font-size:0.7rem;color:var(--red-accent);"></i> ' : '') + conv.title;
+          item.addEventListener('click', () => switchConversation(conv.id));
+          chatsListEl.appendChild(item);
+        });
+      } catch (e) {
+        console.error('خطأ فـ جلب المحادثات:', e);
+      }
+    }
+
+    // تحميل رسائل محادثة معينة فالشاشة
+    async function switchConversation(convId) {
+      currentConversationId = convId;
+      localStorage.setItem('current_conversation_id', convId);
+      drawerOverlay.classList.remove('active');
+
+      chatContainer.innerHTML = '';
+      try {
+        const { data: messages } = await sbClient
+          .from('chat_messages')
+          .select('sender, message')
+          .eq('conversation_id', convId)
+          .order('created_at', { ascending: true });
+
+        if (messages && messages.length > 0) {
+          messages.forEach((m) => appendMessage(m.message, m.sender));
+        } else {
+          appendMessage('مرحباً بك! أنا المساعد الذكي 𝗮𝗱𝗺𝗶𝗻𓂀. كيف يمكنني مساعدتك اليوم؟', 'ai');
+        }
+      } catch (e) {
+        console.error('خطأ فـ تحميل الرسائل:', e);
+      }
+    }
+
+    // زر "دردشة جديدة"
+    document.getElementById('newChatBtn').addEventListener('click', () => {
+      currentConversationId = null;
+      localStorage.removeItem('current_conversation_id');
+      chatContainer.innerHTML = '';
+      appendMessage('مرحباً بك! أنا المساعد الذكي 𝗮𝗱𝗺𝗶𝗻𓂀. كيف يمكنني مساعدتك اليوم؟', 'ai');
+      drawerOverlay.classList.remove('active');
+    });
+
     // 3. التحكم فـ القائمة الجانبية والإيماءات (Swipe)
     const drawerOverlay = document.getElementById('drawerOverlay');
     const openDrawer = document.getElementById('openDrawer');
 
-    openDrawer.addEventListener('click', () => drawerOverlay.classList.add('active'));
+    openDrawer.addEventListener('click', () => {
+      drawerOverlay.classList.add('active');
+      loadConversationsList();
+    });
     drawerOverlay.addEventListener('click', (e) => {
       if (e.target === drawerOverlay) drawerOverlay.classList.remove('active');
     });
@@ -614,7 +691,6 @@
 
     // 7. إضافة الرسائل للواجهة
     function appendMessage(text, sender) {
-      const chatContainer = document.getElementById('chatContainer');
       const msgDiv = document.createElement('div');
       msgDiv.className = `message ${sender}`;
       
@@ -644,10 +720,17 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userPrompt: text,
-            user_id: currentUserId
+            user_id: currentUserId,
+            conversation_id: currentConversationId
           })
         });
         const data = await response.json();
+
+        if (data.conversation_id && data.conversation_id !== currentConversationId) {
+          currentConversationId = data.conversation_id;
+          localStorage.setItem('current_conversation_id', currentConversationId);
+          loadConversationsList();
+        }
 
         if (data.text) {
           appendMessage(data.text, 'ai');
@@ -665,4 +748,3 @@
   </script>
 </body>
 </html>
-٩
