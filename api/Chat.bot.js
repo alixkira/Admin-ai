@@ -1,9 +1,9 @@
 // api/Chat.bot.js
 //
-// هاد الملف هو قلب المحادثة: كيوصلو السؤال ديال المستخدم،
+// هاد الملف هو قلب المحادثة: كيوصلو السؤال ديال المستخدم + conversation_id،
 // كيقرا الهوية المخصصة ديالو (custom_prompt) من vip_users،
 // كيدمجها مع البرومبت الأساسي، كيهضر مع Gemini،
-// كيسجل السؤال والجواب فـ chat_messages، ويرجع الجواب فقط للفرونت.
+// كيسجل السؤال والجواب فـ chat_messages (مربوطين بالمحادثة)، ويرجع الجواب للفرونت.
 //
 // ⚠️ SUPABASE_SERVICE_ROLE_KEY و GEMINI_API_KEY كيتقراو ويتستعملو
 // هنا مباشرة، وما كيترجعوش أبداً فـ أي جواب.
@@ -40,10 +40,7 @@ const BASE_SYSTEM_PROMPT = `
 يجب أن تنساب الأيقونات والملاحظات داخل الإجابة بشكل طبيعي وفخم وكأنها حوار من خبير تقني حقيقي.
 `.trim();
 
-// عدد الرسائل السابقة لي كنجيبوها باش نعطيو للـ AI سياق المحادثة
 const HISTORY_LIMIT = 20;
-
-// اسم موديل Gemini - تأكد من الاسم الصحيح والمتوفر فـ حساب Google AI Studio ديالك
 const GEMINI_MODEL = 'gemini-flash-latest';
 
 export default async function handler(req, res) {
@@ -51,15 +48,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { userPrompt, user_id } = req.body || {};
+  const { userPrompt, user_id, conversation_id } = req.body || {};
 
   if (!userPrompt || !user_id) {
     return res.status(400).json({ error: 'userPrompt و user_id مطلوبين' });
   }
 
-  // ═══════════════════════════════════════════
-  // 2. قراءة المفاتيح الحساسة - سيرفر-سايد فقط
-  // ═══════════════════════════════════════════
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -68,10 +62,30 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'إعدادات السيرفر ناقصة' });
   }
 
-  // عميل Supabase بصلاحيات كاملة (service_role) - يتخدم غير هنا
   const sbAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   try {
+    // ═══════════════════════════════════════════
+    // 2. جيب المحادثة الحالية، أو خلق وحدة جديدة إلى ماكانتش
+    // ═══════════════════════════════════════════
+    let activeConversationId = conversation_id;
+    let isNewConversation = false;
+
+    if (!activeConversationId) {
+      const { data: newConv, error: convError } = await sbAdmin
+        .from('conversations')
+        .insert([{ user_id, title: 'دردشة جديدة' }])
+        .select('id')
+        .single();
+
+      if (convError) {
+        return res.status(500).json({ error: 'تعذر خلق محادثة جديدة: ' + convError.message });
+      }
+
+      activeConversationId = newConv.id;
+      isNewConversation = true;
+    }
+
     // ═══════════════════════════════════════════
     // 3. جلب الشخصية المخصصة ديال هاد المستخدم
     // ═══════════════════════════════════════════
@@ -82,35 +96,28 @@ export default async function handler(req, res) {
       .single();
 
     const customPrompt = vipRow?.custom_prompt?.trim();
-
-    // دمج البرومبت الأساسي مع الشخصية المخصصة (إلى كانت موجودة)
     const systemInstruction = customPrompt
       ? `${BASE_SYSTEM_PROMPT}\n\n[تعليمات إضافية خاصة بهاد المستخدم]\n${customPrompt}`
       : BASE_SYSTEM_PROMPT;
 
     // ═══════════════════════════════════════════
-    // 4. جلب آخر الرسائل باش نعطيو سياق للمحادثة
+    // 4. جلب آخر الرسائل ديال هاد المحادثة بالضبط (ماشي كل المستخدم)
     // ═══════════════════════════════════════════
     const { data: history } = await sbAdmin
       .from('chat_messages')
       .select('sender, message')
-      .eq('user_id', user_id)
+      .eq('conversation_id', activeConversationId)
       .order('created_at', { ascending: false })
       .limit(HISTORY_LIMIT);
 
     const orderedHistory = (history || []).reverse();
 
-    // تحويل السياق لصيغة Gemini (contents array)
     const contents = orderedHistory.map((row) => ({
       role: row.sender === 'ai' ? 'model' : 'user',
       parts: [{ text: row.message }]
     }));
 
-    // زيادة الرسالة الجديدة ديال المستخدم فآخر السياق
-    contents.push({
-      role: 'user',
-      parts: [{ text: userPrompt }]
-    });
+    contents.push({ role: 'user', parts: [{ text: userPrompt }] });
 
     // ═══════════════════════════════════════════
     // 5. صيفط الطلب لـ Gemini API
@@ -121,9 +128,7 @@ export default async function handler(req, res) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          systemInstruction: {
-            parts: [{ text: systemInstruction }]
-          },
+          systemInstruction: { parts: [{ text: systemInstruction }] },
           contents
         })
       }
@@ -133,8 +138,6 @@ export default async function handler(req, res) {
 
     if (!geminiRes.ok) {
       console.error('❌ خطأ من Gemini:', geminiData);
-
-      // إلى فشل الموديل، نجيبو لائحة الموديلات المتوفرة الحقيقية لهاد المفتاح
       let availableModels = '';
       try {
         const listRes = await fetch(
@@ -148,7 +151,6 @@ export default async function handler(req, res) {
       } catch (listErr) {
         availableModels = ' | (تعذر جلب لائحة الموديلات)';
       }
-
       return res.status(502).json({
         error: 'خطأ من Gemini: ' + (geminiData?.error?.message || JSON.stringify(geminiData)) + availableModels
       });
@@ -159,26 +161,45 @@ export default async function handler(req, res) {
       'ماقدرتش نجاوب دبا، عاود جرب.';
 
     // ═══════════════════════════════════════════
-    // 6. تسجيل السؤال والجواب فـ chat_messages
+    // 6. تسجيل السؤال والجواب فـ chat_messages مربوطين بالمحادثة
     // ═══════════════════════════════════════════
     const { error: insertError } = await sbAdmin.from('chat_messages').insert([
-      { user_id, sender: 'user', message: userPrompt },
-      { user_id, sender: 'ai', message: aiText }
+      { user_id, conversation_id: activeConversationId, sender: 'user', message: userPrompt },
+      { user_id, conversation_id: activeConversationId, sender: 'ai', message: aiText }
     ]);
 
     if (insertError) {
-      console.error('❌ خطأ فـ تسجيل الرسالة فـ chat_messages:', insertError);
-      // كنكملو ونرجعو الجواب للمستخدم رغم فشل التسجيل، ولكن كنبينو الخطأ فالنص
+      console.error('❌ خطأ فـ تسجيل الرسالة:', insertError);
       return res.status(200).json({
         text: aiText,
+        conversation_id: activeConversationId,
         warning: '⚠️ الجواب وصل، ولكن ماتسجلش فـ قاعدة البيانات: ' + insertError.message
       });
     }
 
     // ═══════════════════════════════════════════
-    // 7. الجواب النهائي للفرونت - النص فقط
+    // 7. إلى كانت محادثة جديدة، نسميوها بأول جملة ديال المستخدم
     // ═══════════════════════════════════════════
-    return res.status(200).json({ text: aiText });
+    if (isNewConversation) {
+      const autoTitle = userPrompt.trim().slice(0, 40);
+      await sbAdmin
+        .from('conversations')
+        .update({ title: autoTitle, updated_at: new Date().toISOString() })
+        .eq('id', activeConversationId);
+    } else {
+      await sbAdmin
+        .from('conversations')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', activeConversationId);
+    }
+
+    // ═══════════════════════════════════════════
+    // 8. الجواب النهائي للفرونت
+    // ═══════════════════════════════════════════
+    return res.status(200).json({
+      text: aiText,
+      conversation_id: activeConversationId
+    });
 
   } catch (err) {
     console.error('❌ خطأ فـ Chat.bot:', err);
