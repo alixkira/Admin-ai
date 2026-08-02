@@ -254,7 +254,7 @@
         const newSessionId = generateSessionId();
         await sbClient
           .from('vip_users')
-          .update({ active_session_id: newSessionId })
+          .update({ active_session_id: newSessionId, auth_uid: user.id })
           .eq('id', vipRow.id);
 
         localStorage.setItem('user_id', vipRow.id);
