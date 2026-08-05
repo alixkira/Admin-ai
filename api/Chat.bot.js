@@ -48,10 +48,13 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { userPrompt, user_id, conversation_id } = req.body || {};
+  const { userPrompt, user_id, conversation_id, image } = req.body || {};
 
-  if (!userPrompt || !user_id) {
-    return res.status(400).json({ error: 'userPrompt و user_id مطلوبين' });
+  if ((!userPrompt || !userPrompt.trim()) && !image) {
+    return res.status(400).json({ error: 'خاصك تكتب نص أو تصيفط صورة على الأقل' });
+  }
+  if (!user_id) {
+    return res.status(400).json({ error: 'user_id مطلوب' });
   }
 
   const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -117,7 +120,19 @@ export default async function handler(req, res) {
       parts: [{ text: row.message }]
     }));
 
-    contents.push({ role: 'user', parts: [{ text: userPrompt }] });
+    const currentParts = [];
+    if (userPrompt && userPrompt.trim()) {
+      currentParts.push({ text: userPrompt });
+    }
+    if (image && image.data && image.mimeType) {
+      currentParts.push({
+        inlineData: {
+          mimeType: image.mimeType,
+          data: image.data
+        }
+      });
+    }
+    contents.push({ role: 'user', parts: currentParts });
 
     // ═══════════════════════════════════════════
     // 5. صيفط الطلب لـ Gemini API
@@ -163,8 +178,12 @@ export default async function handler(req, res) {
     // ═══════════════════════════════════════════
     // 6. تسجيل السؤال والجواب فـ chat_messages مربوطين بالمحادثة
     // ═══════════════════════════════════════════
+    const messageToStore = (userPrompt && userPrompt.trim())
+      ? userPrompt + (image ? '\n📎 [صورة مرفقة]' : '')
+      : '📎 [صورة مرفقة]';
+
     const { error: insertError } = await sbAdmin.from('chat_messages').insert([
-      { user_id, conversation_id: activeConversationId, sender: 'user', message: userPrompt },
+      { user_id, conversation_id: activeConversationId, sender: 'user', message: messageToStore },
       { user_id, conversation_id: activeConversationId, sender: 'ai', message: aiText }
     ]);
 
@@ -181,7 +200,9 @@ export default async function handler(req, res) {
     // 7. إلى كانت محادثة جديدة، نسميوها بأول جملة ديال المستخدم
     // ═══════════════════════════════════════════
     if (isNewConversation) {
-      const autoTitle = userPrompt.trim().slice(0, 40);
+      const autoTitle = (userPrompt && userPrompt.trim())
+        ? userPrompt.trim().slice(0, 40)
+        : '📎 صورة';
       await sbAdmin
         .from('conversations')
         .update({ title: autoTitle, updated_at: new Date().toISOString() })
