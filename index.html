@@ -147,9 +147,6 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
       transition: background-color 0.15s;
     }
 
@@ -166,11 +163,13 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      flex: 1;
+      min-width: 0;
     }
 
     .conv-dots {
       position: absolute;
-      left: 6px;
+      right: 6px;
       top: 50%;
       transform: translateY(-50%);
       background: none;
@@ -193,7 +192,7 @@
 
     .conv-menu {
       position: absolute;
-      left: 6px;
+      right: 6px;
       top: calc(100% + 2px);
       background-color: #1c1c1c;
       border: 1px solid var(--border-color);
@@ -405,6 +404,49 @@
       font-size: 0.95rem;
     }
 
+    .attachment-preview {
+      padding: 8px 4px;
+    }
+
+    .attachment-thumb-wrap {
+      position: relative;
+      width: 64px;
+      height: 64px;
+      display: inline-block;
+    }
+
+    .attachment-thumb-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+    }
+
+    .attachment-thumb-wrap button {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--red-dark);
+      color: #fff;
+      border: none;
+      font-size: 0.65rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .msg-image {
+      max-width: 220px;
+      border-radius: 12px;
+      display: block;
+      margin-bottom: 6px;
+    }
+
     .input-btn {
       background: none;
       border: none;
@@ -439,6 +481,41 @@
 
     .action-modal.active {
       bottom: 0;
+    }
+
+    .action-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 89;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .action-modal-backdrop.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .action-modal-header {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 8px;
+    }
+
+    .action-modal-close {
+      background: #1a1a1a;
+      border: 1px solid var(--border-color);
+      color: var(--text-light);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.95rem;
     }
 
     .action-grid {
@@ -592,6 +669,12 @@
 
   <!-- Bottom Input Bar -->
   <div class="input-container">
+    <div id="attachmentPreview" class="attachment-preview" style="display:none;">
+      <div class="attachment-thumb-wrap">
+        <img id="attachmentThumb" src="" alt="صورة مرفقة" />
+        <button id="removeAttachment"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
     <div class="input-box">
       <button class="input-btn" id="toggleActions"><i class="fa-solid fa-paperclip"></i></button>
       <input type="text" id="userInput" placeholder="إسأل 𝗮𝗱𝗺𝗶𝗻𓂀..." />
@@ -601,7 +684,12 @@
   </div>
 
   <!-- Attachment Options Drawer Modal -->
+  <div class="action-modal-backdrop" id="actionModalBackdrop"></div>
   <div class="action-modal" id="actionModal">
+    <div class="action-modal-header">
+      <span></span>
+      <button class="action-modal-close" id="closeActionModal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
     <div class="action-grid">
       <div class="action-item" onclick="triggerFileInput('camera')">
         <i class="fa-solid fa-camera"></i>
@@ -765,13 +853,22 @@
           item.appendChild(titleSpan);
           item.appendChild(dotsBtn);
 
-          item.addEventListener('click', () => switchConversation(conv.id));
+          let suppressNextClick = false;
+          item.addEventListener('click', (e) => {
+            if (suppressNextClick) {
+              suppressNextClick = false;
+              e.stopPropagation();
+              return;
+            }
+            switchConversation(conv.id);
+          });
 
           // ضغط مطول فالهاتف كيحل نفس القائمة
           let longPressTimer = null;
           item.addEventListener('touchstart', () => {
             longPressTimer = setTimeout(() => {
               openConvMenu(item, conv);
+              suppressNextClick = true;
               longPressTimer = null;
             }, 500);
           });
@@ -906,17 +1003,69 @@
 
     // 4. نافذة المرفقات (+ Button)
     const actionModal = document.getElementById('actionModal');
+    const actionModalBackdrop = document.getElementById('actionModalBackdrop');
+
+    function openActionModal() {
+      actionModal.classList.add('active');
+      actionModalBackdrop.classList.add('active');
+    }
+
+    function closeActionModal() {
+      actionModal.classList.remove('active');
+      actionModalBackdrop.classList.remove('active');
+    }
+
     document.getElementById('toggleActions').addEventListener('click', () => {
-      actionModal.classList.toggle('active');
+      if (actionModal.classList.contains('active')) {
+        closeActionModal();
+      } else {
+        openActionModal();
+      }
     });
+
+    document.getElementById('closeActionModal').addEventListener('click', closeActionModal);
+    actionModalBackdrop.addEventListener('click', closeActionModal);
 
     function triggerFileInput(type) {
       const fileInput = document.getElementById('hiddenFileInput');
       if (type === 'camera') fileInput.setAttribute('capture', 'environment');
       else fileInput.removeAttribute('capture');
+      fileInput.accept = 'image/*';
       fileInput.click();
-      actionModal.classList.remove('active');
+      closeActionModal();
     }
+
+    // 4b. قراءة الصورة المختارة وعرضها كمعاينة قبل الإرسال
+    let pendingImage = null; // { mimeType, base64Data, dataUrl }
+    const attachmentPreview = document.getElementById('attachmentPreview');
+    const attachmentThumb = document.getElementById('attachmentThumb');
+
+    document.getElementById('hiddenFileInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (!file.type.startsWith('image/')) {
+        alert('حاليا مدعومة غير الصور فقط');
+        e.target.value = '';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result;
+        const base64Data = dataUrl.split(',')[1];
+        pendingImage = { mimeType: file.type, base64Data, dataUrl };
+        attachmentThumb.src = dataUrl;
+        attachmentPreview.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    });
+
+    document.getElementById('removeAttachment').addEventListener('click', () => {
+      pendingImage = null;
+      attachmentPreview.style.display = 'none';
+    });
 
     // 5. تحويل الصوت لنص (Microphone Button)
     const sttBtn = document.getElementById('sttBtn');
@@ -950,8 +1099,8 @@
     const dynamicActionIcon = document.getElementById('dynamicActionIcon');
 
     function updateDynamicActionBtn() {
-      const hasText = userInput.value.trim().length > 0;
-      if (hasText) {
+      const hasContent = userInput.value.trim().length > 0 || pendingImage !== null;
+      if (hasContent) {
         dynamicActionIcon.className = 'fa-solid fa-paper-plane';
         dynamicActionBtn.title = 'إرسال';
         dynamicActionBtn.classList.remove('call-btn');
@@ -967,8 +1116,8 @@
     userInput.addEventListener('input', updateDynamicActionBtn);
 
     dynamicActionBtn.addEventListener('click', () => {
-      const hasText = userInput.value.trim().length > 0;
-      if (hasText) {
+      const hasContent = userInput.value.trim().length > 0 || pendingImage !== null;
+      if (hasContent) {
         sendMessage();
       } else {
         voiceOverlay.classList.add('active');
@@ -977,7 +1126,7 @@
 
     // نرسل الرسالة كذلك عند الضغط على Enter
     userInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && userInput.value.trim().length > 0) {
+      if (e.key === 'Enter' && (userInput.value.trim().length > 0 || pendingImage !== null)) {
         sendMessage();
       }
     });
@@ -989,25 +1138,30 @@
       return div.innerHTML;
     }
 
-    function appendMessage(text, sender) {
+    function appendMessage(text, sender, imageDataUrl) {
       const msgDiv = document.createElement('div');
       msgDiv.className = `message ${sender}`;
 
       // كل سطر (عربي/أجنبي) كيتلف فـ div ديالو، الاتجاه كيتحسب لكل سطر بروحو
-      const linesHtml = text
+      const linesHtml = (text || '')
         .split('\n')
+        .filter((line) => line.length > 0)
         .map((line) => `<div class="msg-line" dir="auto">${escapeHtml(line)}</div>`)
         .join('');
 
+      const imageHtml = imageDataUrl
+        ? `<img class="msg-image" src="${imageDataUrl}" alt="صورة مرفقة" />`
+        : '';
+
       msgDiv.innerHTML = `
-        <div class="msg-text">${linesHtml}</div>
+        <div class="msg-text">${imageHtml}${linesHtml}</div>
         <div class="message-actions">
           <span class="action-icon"><i class="fa-regular fa-copy"></i></span>
         </div>
       `;
 
       msgDiv.querySelector('.action-icon').addEventListener('click', () => {
-        navigator.clipboard.writeText(text);
+        navigator.clipboard.writeText(text || '');
       });
 
       // بنسبة لرسائل المستخدم: ضغط مطول (هاتف) كيبين زر النسخ
@@ -1031,14 +1185,54 @@
       toggleEmptyState();
     }
 
+    // مؤشر "جاري البحث" أثناء انتظار جواب الـ AI
+    const loadingPhrases = [
+      'جاري البحث...',
+      'جاري التفكير...',
+      'جاري تحليل السؤال...',
+      'جاري صياغة الجواب...',
+      'جاري تحميل النتيجة...'
+    ];
+    let loadingInterval = null;
+
+    function showTypingIndicator() {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'message ai';
+      msgDiv.id = 'typingIndicator';
+      msgDiv.innerHTML = `<div class="msg-text"><div class="msg-line" dir="auto">${loadingPhrases[0]}</div></div>`;
+      chatContainer.appendChild(msgDiv);
+      chatScrollEl.scrollTop = chatScrollEl.scrollHeight;
+      toggleEmptyState();
+
+      let i = 0;
+      loadingInterval = setInterval(() => {
+        i = (i + 1) % loadingPhrases.length;
+        const lineEl = msgDiv.querySelector('.msg-line');
+        if (lineEl) lineEl.textContent = loadingPhrases[i];
+      }, 1300);
+    }
+
+    function removeTypingIndicator() {
+      if (loadingInterval) {
+        clearInterval(loadingInterval);
+        loadingInterval = null;
+      }
+      const el = document.getElementById('typingIndicator');
+      if (el) el.remove();
+    }
+
     // 8. إرسال الرسالة لـ api/Chat.bot
     async function sendMessage() {
       const text = userInput.value.trim();
-      if (!text) return;
+      const imageToSend = pendingImage;
+      if (!text && !imageToSend) return;
 
-      appendMessage(text, 'user');
+      appendMessage(text, 'user', imageToSend ? imageToSend.dataUrl : null);
       userInput.value = '';
+      pendingImage = null;
+      attachmentPreview.style.display = 'none';
       updateDynamicActionBtn();
+      showTypingIndicator();
 
       try {
         const response = await fetch('/api/Chat.bot', {
@@ -1047,10 +1241,12 @@
           body: JSON.stringify({
             userPrompt: text,
             user_id: currentUserId,
-            conversation_id: currentConversationId
+            conversation_id: currentConversationId,
+            image: imageToSend ? { mimeType: imageToSend.mimeType, data: imageToSend.base64Data } : null
           })
         });
         const data = await response.json();
+        removeTypingIndicator();
 
         if (data.conversation_id && data.conversation_id !== currentConversationId) {
           currentConversationId = data.conversation_id;
@@ -1068,6 +1264,7 @@
           appendMessage('⚠️ خطأ من السيرفر (status ' + response.status + '): ' + (data.error || 'بلا تفاصيل'), 'ai');
         }
       } catch (err) {
+        removeTypingIndicator();
         appendMessage('⚠️ تعذر الاتصال بالسيرفر: ' + err.message, 'ai');
       }
     }
