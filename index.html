@@ -31,10 +31,15 @@
       -webkit-tap-highlight-color: transparent;
     }
 
+    html, body {
+      height: 100%;
+    }
+
     body {
       background-color: var(--bg-black);
       color: var(--text-light);
       height: 100vh;
+      height: 100dvh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -129,7 +134,92 @@
       overflow-y: auto;
       display: flex;
       flex-direction: column;
+      gap: 4px;
+    }
+
+    .conv-item {
+      position: relative;
+      padding: 10px 34px 10px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--text-light);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: background-color 0.15s;
+    }
+
+    .conv-item:hover {
+      background-color: #1a1a1a;
+    }
+
+    /* المحادثة المفتوحة حاليا */
+    .conv-item.active {
+      background-color: rgba(178, 34, 34, 0.25);
+    }
+
+    .conv-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .conv-dots {
+      position: absolute;
+      left: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-gray);
+      padding: 4px 8px;
+      cursor: pointer;
+      display: none;
+      border-radius: 6px;
+    }
+
+    @media (hover: hover) {
+      .conv-item:hover .conv-dots {
+        display: block;
+      }
+    }
+    .conv-item.menu-open .conv-dots {
+      display: block;
+    }
+
+    .conv-menu {
+      position: absolute;
+      left: 6px;
+      top: calc(100% + 2px);
+      background-color: #1c1c1c;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      z-index: 200;
+      min-width: 150px;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    }
+
+    .conv-menu-item {
+      padding: 10px 14px;
+      font-size: 0.82rem;
+      color: var(--text-light);
+      display: flex;
+      align-items: center;
       gap: 8px;
+      cursor: pointer;
+    }
+
+    .conv-menu-item:hover {
+      background-color: #2a2a2a;
+    }
+
+    .conv-menu-item.danger {
+      color: var(--red-accent);
     }
 
     .sidebar-footer {
@@ -164,48 +254,128 @@
     /* Main Chat Container */
     main {
       flex: 1;
+      min-height: 0;
       overflow-y: auto;
       padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 4px;
+      position: relative;
     }
 
+    /* Borderless Chat UI: no bubble background/border, plain aligned text blocks */
     .message {
-      max-width: 85%;
-      padding: 12px 16px;
-      border-radius: 12px;
+      max-width: 90%;
+      padding: 6px 2px;
+      background: transparent;
+      border: none;
+      border-radius: 0;
       font-size: 0.95rem;
-      line-height: 1.5;
+      line-height: 1.6;
       position: relative;
       word-break: break-word;
     }
 
     .message.user {
       align-self: flex-end;
-      background-color: var(--red-dark);
-      color: #fff;
-      border-bottom-left-radius: 2px;
+      color: var(--red-accent);
+      text-align: right;
     }
 
     .message.ai {
       align-self: flex-start;
-      background-color: var(--bg-card);
-      border: 1px solid var(--border-color);
       color: var(--text-light);
-      border-bottom-right-radius: 2px;
+      text-align: right;
+      width: 100%;
+    }
+
+    /* كل سطر (عربي/أجنبي) فبلاصتو، الاتجاه كيتحسب لكل سطر بروحو */
+    .msg-line {
+      unicode-bidi: plaintext;
+      display: block;
+    }
+    .msg-line:not(:last-child) {
+      margin-bottom: 4px;
     }
 
     .message-actions {
-      display: flex;
+      display: none;
       gap: 10px;
-      margin-top: 8px;
+      margin-top: 4px;
       font-size: 0.8rem;
       color: var(--text-gray);
     }
 
+    /* رسائل AI: زر النسخ ظاهر دايما */
+    .message.ai .message-actions {
+      display: flex;
+    }
+
+    /* رسائل المستخدم: زر النسخ مخبي، يبان بـ hover (حاسوب) أو ضغط مطول (هاتف) */
+    @media (hover: hover) {
+      .message.user:hover .message-actions {
+        display: flex;
+      }
+    }
+    .message.user.show-actions .message-actions {
+      display: flex;
+    }
+
     .action-icon {
       cursor: pointer;
+      color: var(--text-gray);
+      font-size: 0.95rem;
+    }
+
+    /* الشاشة الفارغة (بلا محادثة) */
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .empty-state-title {
+      font-size: 1.5rem;
+      font-weight: bold;
+      background: linear-gradient(135deg, var(--text-light), var(--red-accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      letter-spacing: 0.5px;
+    }
+
+    .suggestion-chips {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .suggestion-chip {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-light);
+      padding: 10px 18px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: border-color 0.2s;
+    }
+
+    .suggestion-chip:active {
+      border-color: var(--red-accent);
+    }
+
+    .suggestion-chip i {
+      color: var(--red-accent);
     }
 
     /* Input Bar */
@@ -406,6 +576,18 @@
 
   <!-- Main Messages Container -->
   <main id="chatContainer">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-state-title">مرحباً، ابدأ دردشة بلا حدود</div>
+      <div class="suggestion-chips">
+        <div class="suggestion-chip" data-prompt="عرفني بنفسك">
+          <i class="fa-solid fa-user"></i> عرفني بنفسك
+        </div>
+        <div class="suggestion-chip" data-prompt="أنشئ صورة">
+          <i class="fa-solid fa-image"></i> أنشئ صورة
+        </div>
+      </div>
+    </div>
+    <div id="messagesWrapper" style="display:flex; flex-direction:column; gap:4px;"></div>
   </main>
 
   <!-- Bottom Input Bar -->
@@ -457,7 +639,24 @@
       window.location.href = 'login.html';
     }
 
-    const chatContainer = document.getElementById('chatContainer');
+    const chatContainer = document.getElementById('messagesWrapper');
+    const chatScrollEl = document.getElementById('chatContainer');
+    const emptyState = document.getElementById('emptyState');
+
+    function toggleEmptyState() {
+      const hasMessages = chatContainer.children.length > 0;
+      emptyState.style.display = hasMessages ? 'none' : 'flex';
+    }
+
+    // شرائح الاقتراح فالشاشة الفارغة: كتعمر خانة الكتابة بالنص
+    document.querySelectorAll('.suggestion-chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        const inputEl = document.getElementById('userInput');
+        inputEl.value = chip.dataset.prompt;
+        inputEl.focus();
+        if (typeof updateDynamicActionBtn === 'function') updateDynamicActionBtn();
+      });
+    });
 
     // 2. الربط التلقائي بـ Supabase عبر api/Token.js
     // ⚠️ سميناه sbClient (ماشي supabase) حيت "supabase" مستعمل من قبل
@@ -503,7 +702,7 @@
         if (currentConversationId) {
           switchConversation(currentConversationId);
         } else {
-          appendMessage('مرحباً بك! أنا المساعد الذكي 𝗮𝗱𝗺𝗶𝗻𓂀. كيف يمكنني مساعدتك اليوم؟', 'ai');
+          toggleEmptyState();
         }
       } catch (e) {
         console.error('خطأ فـ تحميل بيانات البروفايل:', e);
@@ -548,14 +747,109 @@
         chatsListEl.innerHTML = '';
         convs.forEach((conv) => {
           const item = document.createElement('div');
-          item.style.cssText = 'padding:10px;border-radius:8px;cursor:pointer;font-size:0.85rem;color:var(--text-light);display:flex;align-items:center;gap:6px;';
-          item.innerHTML = (conv.pinned ? '<i class="fa-solid fa-thumbtack" style="font-size:0.7rem;color:var(--red-accent);"></i> ' : '') + conv.title;
+          item.className = 'conv-item' + (conv.id === currentConversationId ? ' active' : '');
+          item.dataset.convId = conv.id;
+
+          const titleSpan = document.createElement('span');
+          titleSpan.className = 'conv-title';
+          titleSpan.innerHTML = (conv.pinned ? '<i class="fa-solid fa-thumbtack" style="font-size:0.7rem;color:var(--red-accent);"></i> ' : '') + conv.title;
+
+          const dotsBtn = document.createElement('button');
+          dotsBtn.className = 'conv-dots';
+          dotsBtn.innerHTML = '<i class="fa-solid fa-ellipsis-vertical"></i>';
+          dotsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openConvMenu(item, conv);
+          });
+
+          item.appendChild(titleSpan);
+          item.appendChild(dotsBtn);
+
           item.addEventListener('click', () => switchConversation(conv.id));
+
+          // ضغط مطول فالهاتف كيحل نفس القائمة
+          let longPressTimer = null;
+          item.addEventListener('touchstart', () => {
+            longPressTimer = setTimeout(() => {
+              openConvMenu(item, conv);
+              longPressTimer = null;
+            }, 500);
+          });
+          item.addEventListener('touchend', () => {
+            if (longPressTimer) clearTimeout(longPressTimer);
+          });
+          item.addEventListener('touchmove', () => {
+            if (longPressTimer) clearTimeout(longPressTimer);
+          });
+
           chatsListEl.appendChild(item);
         });
       } catch (e) {
         console.error('خطأ فـ جلب المحادثات:', e);
       }
+    }
+
+    // فتح قائمة (تثبيت/إلغاء تثبيت - إعادة تسمية - حذف) لمحادثة معينة
+    function openConvMenu(item, conv) {
+      // نحيدو أي قائمة مفتوحة قبل
+      document.querySelectorAll('.conv-menu').forEach((m) => m.remove());
+      document.querySelectorAll('.conv-item.menu-open').forEach((el) => el.classList.remove('menu-open'));
+
+      item.classList.add('menu-open');
+
+      const menu = document.createElement('div');
+      menu.className = 'conv-menu';
+      menu.innerHTML = `
+        <div class="conv-menu-item" data-action="pin">
+          <i class="fa-solid fa-thumbtack"></i> ${conv.pinned ? 'إلغاء تثبيت' : 'تثبيت'}
+        </div>
+        <div class="conv-menu-item" data-action="rename">
+          <i class="fa-solid fa-pen"></i> إعادة تسمية
+        </div>
+        <div class="conv-menu-item danger" data-action="delete">
+          <i class="fa-solid fa-trash"></i> حذف
+        </div>
+      `;
+      item.appendChild(menu);
+
+      menu.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const action = e.target.closest('.conv-menu-item')?.dataset.action;
+        if (!action) return;
+
+        if (action === 'pin') {
+          await sbClient.from('conversations').update({ pinned: !conv.pinned }).eq('id', conv.id);
+          loadConversationsList();
+        } else if (action === 'rename') {
+          const newTitle = prompt('إسم المحادثة الجديد:', conv.title);
+          if (newTitle && newTitle.trim()) {
+            await sbClient.from('conversations').update({ title: newTitle.trim() }).eq('id', conv.id);
+            loadConversationsList();
+          }
+        } else if (action === 'delete') {
+          const confirmed = confirm('هل أنت متأكد؟ حذف المحادثة نهائي ولا يمكن التراجع عنه.');
+          if (confirmed) {
+            await sbClient.from('conversations').delete().eq('id', conv.id);
+            if (conv.id === currentConversationId) {
+              currentConversationId = null;
+              localStorage.removeItem('current_conversation_id');
+              chatContainer.innerHTML = '';
+              toggleEmptyState();
+            }
+            loadConversationsList();
+          }
+        }
+        item.classList.remove('menu-open');
+      });
+
+      // نسد القائمة إلى ضغط المستخدم فأي بلاصة أخرى
+      setTimeout(() => {
+        document.addEventListener('click', function closeMenu() {
+          menu.remove();
+          item.classList.remove('menu-open');
+          document.removeEventListener('click', closeMenu);
+        }, { once: true });
+      }, 0);
     }
 
     // تحميل رسائل محادثة معينة فالشاشة
@@ -574,9 +868,8 @@
 
         if (messages && messages.length > 0) {
           messages.forEach((m) => appendMessage(m.message, m.sender));
-        } else {
-          appendMessage('مرحباً بك! أنا المساعد الذكي 𝗮𝗱𝗺𝗶𝗻𓂀. كيف يمكنني مساعدتك اليوم؟', 'ai');
         }
+        toggleEmptyState();
       } catch (e) {
         console.error('خطأ فـ تحميل الرسائل:', e);
       }
@@ -587,7 +880,7 @@
       currentConversationId = null;
       localStorage.removeItem('current_conversation_id');
       chatContainer.innerHTML = '';
-      appendMessage('مرحباً بك! أنا المساعد الذكي 𝗮𝗱𝗺𝗶𝗻𓂀. كيف يمكنني مساعدتك اليوم؟', 'ai');
+      toggleEmptyState();
       drawerOverlay.classList.remove('active');
     });
 
@@ -690,19 +983,52 @@
     });
 
     // 7. إضافة الرسائل للواجهة
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
     function appendMessage(text, sender) {
       const msgDiv = document.createElement('div');
       msgDiv.className = `message ${sender}`;
-      
+
+      // كل سطر (عربي/أجنبي) كيتلف فـ div ديالو، الاتجاه كيتحسب لكل سطر بروحو
+      const linesHtml = text
+        .split('\n')
+        .map((line) => `<div class="msg-line" dir="auto">${escapeHtml(line)}</div>`)
+        .join('');
+
       msgDiv.innerHTML = `
-        <div>${text}</div>
+        <div class="msg-text">${linesHtml}</div>
         <div class="message-actions">
-          <span class="action-icon" onclick="navigator.clipboard.writeText('${text.replace(/'/g, "\\'")}')"><i class="fa-regular fa-copy"></i> نسخ</span>
+          <span class="action-icon"><i class="fa-regular fa-copy"></i></span>
         </div>
       `;
 
+      msgDiv.querySelector('.action-icon').addEventListener('click', () => {
+        navigator.clipboard.writeText(text);
+      });
+
+      // بنسبة لرسائل المستخدم: ضغط مطول (هاتف) كيبين زر النسخ
+      if (sender === 'user') {
+        let longPressTimer = null;
+        msgDiv.addEventListener('touchstart', () => {
+          longPressTimer = setTimeout(() => {
+            msgDiv.classList.add('show-actions');
+          }, 450);
+        });
+        msgDiv.addEventListener('touchend', () => {
+          if (longPressTimer) clearTimeout(longPressTimer);
+        });
+        msgDiv.addEventListener('touchmove', () => {
+          if (longPressTimer) clearTimeout(longPressTimer);
+        });
+      }
+
       chatContainer.appendChild(msgDiv);
-      chatContainer.scrollTop = chatContainer.scrollHeight;
+      chatScrollEl.scrollTop = chatScrollEl.scrollHeight;
+      toggleEmptyState();
     }
 
     // 8. إرسال الرسالة لـ api/Chat.bot
