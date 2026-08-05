@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>الإعدادات - admin𓂀 AI</title>
+  <link rel="manifest" href="manifest.json">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --bg-black: #0a0a0a;
+      --bg-card: #141414;
+      --red-dark: #8b0000;
+      --red-accent: #b22222;
+      --text-gray: #a0a0a0;
+      --text-light: #ececec;
+      --border-color: #262626;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      background-color: var(--bg-black);
+      color: var(--text-light);
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+
+    header {
+      height: 56px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      background-color: var(--bg-black);
+      z-index: 10;
+    }
+
+    .back-btn {
+      background: none;
+      border: none;
+      color: var(--text-light);
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+
+    header h1 {
+      font-size: 1.05rem;
+    }
+
+    main {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 20px 16px 60px;
+    }
+
+    .profile-block {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      margin-bottom: 22px;
+    }
+
+    .profile-avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 10px;
+      background: radial-gradient(circle at 30% 30%, var(--red-accent), var(--red-dark) 70%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .profile-email {
+      color: var(--text-gray);
+      font-size: 0.8rem;
+      margin-top: 2px;
+    }
+
+    .section-title {
+      font-size: 0.8rem;
+      color: var(--text-gray);
+      margin: 22px 4px 8px;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 14px 16px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+
+    .setting-row .label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.9rem;
+    }
+
+    .setting-row .label i {
+      color: var(--red-accent);
+      width: 18px;
+      text-align: center;
+    }
+
+    .setting-row .value {
+      color: var(--text-gray);
+      font-size: 0.82rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .setting-row input[type="text"] {
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text-light);
+      font-size: 0.85rem;
+      text-align: left;
+      width: 130px;
+    }
+
+    /* Toggle Switch */
+    .switch {
+      position: relative;
+      width: 42px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .switch input { display: none; }
+
+    .switch-slider {
+      position: absolute;
+      inset: 0;
+      background-color: #333;
+      border-radius: 20px;
+      transition: 0.2s;
+      cursor: pointer;
+    }
+
+    .switch-slider::before {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #fff;
+      top: 3px;
+      right: 3px;
+      transition: 0.2s;
+    }
+
+    .switch input:checked + .switch-slider {
+      background-color: var(--red-dark);
+    }
+
+    .switch input:checked + .switch-slider::before {
+      transform: translateX(-18px);
+    }
+
+    .logout-btn {
+      width: 100%;
+      margin-top: 24px;
+      padding: 14px;
+      background-color: rgba(178, 34, 34, 0.15);
+      border: 1px solid var(--red-accent);
+      color: var(--red-accent);
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 100;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .modal-backdrop.active { display: flex; }
+
+    .modal-sheet {
+      background-color: var(--bg-card);
+      border-radius: 18px 18px 0 0;
+      width: 100%;
+      max-width: 560px;
+      padding: 20px;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    .modal-title {
+      font-size: 1rem;
+      font-weight: bold;
+      margin-bottom: 16px;
+    }
+
+    .modal-option {
+      padding: 13px 10px;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .modal-option:hover { background-color: #1c1c1c; }
+
+    .modal-option i.check {
+      color: var(--red-accent);
+      display: none;
+    }
+
+    .modal-option.selected i.check { display: inline; }
+
+    .modal-textarea {
+      width: 100%;
+      min-height: 120px;
+      background-color: #1a1a1a;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      color: var(--text-light);
+      padding: 12px;
+      font-size: 0.88rem;
+      resize: vertical;
+    }
+
+    .modal-save-btn {
+      width: 100%;
+      margin-top: 14px;
+      padding: 12px;
+      background-color: var(--red-dark);
+      border: none;
+      color: #fff;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .voice-preview-btn {
+      background: none;
+      border: none;
+      color: var(--text-gray);
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <button class="back-btn" onclick="window.location.href='index.html'">
+      <i class="fa-solid fa-arrow-right"></i>
+    </button>
+    <h1>الإعدادات</h1>
+  </header>
+
+  <main>
+    <div class="profile-block">
+      <div class="profile-avatar" id="profileAvatar">U</div>
+      <div>
+        <div id="profileUsername" style="font-weight:bold;">جاري التحميل...</div>
+        <div class="profile-email" id="profileEmail"></div>
+      </div>
+    </div>
+
+    <div class="section-title">الحساب</div>
+
+    <div class="setting-row" id="usernameRow">
+      <div class="label"><i class="fa-solid fa-user"></i> إسم مستخدم</div>
+      <div class="value">
+        <span id="usernameDisplay">-</span>
+        <i class="fa-solid fa-pen" style="font-size:0.75rem;"></i>
+      </div>
+    </div>
+
+    <div class="setting-row" id="languageRow">
+      <div class="label"><i class="fa-solid fa-globe"></i> لغة تطبيق</div>
+      <div class="value"><span id="languageDisplay">English</span> <i class="fa-solid fa-chevron-left" style="font-size:0.7rem;"></i></div>
+    </div>
+
+    <div class="setting-row" id="voiceRow">
+      <div class="label"><i class="fa-solid fa-waveform"></i> صوت AI</div>
+      <div class="value"><span id="voiceDisplay">Puck</span> <i class="fa-solid fa-chevron-left" style="font-size:0.7rem;"></i></div>
+    </div>
+
+    <div class="setting-row" id="systemPromptRow">
+      <div class="label"><i class="fa-solid fa-sliders"></i> توجيهات النظام</div>
+      <div class="value"><i class="fa-solid fa-chevron-left" style="font-size:0.7rem;"></i></div>
+    </div>
+
+    <div class="section-title">وضعية التطبيق</div>
+
+    <div class="setting-row">
+      <div class="label"><i class="fa-solid fa-camera"></i> الكاميرا</div>
+      <label class="switch">
+        <input type="checkbox" id="permCamera">
+        <span class="switch-slider"></span>
+      </label>
+    </div>
+
+    <div class="setting-row">
+      <div class="label"><i class="fa-solid fa-microphone"></i> المايك</div>
+      <label class="switch">
+        <input type="checkbox" id="permMic">
+        <span class="switch-slider"></span>
+      </label>
+    </div>
+
+    <div class="setting-row">
+      <div class="label"><i class="fa-solid fa-image"></i> الصور والملفات</div>
+      <label class="switch">
+        <input type="checkbox" id="permFiles" checked>
+        <span class="switch-slider"></span>
+      </label>
+    </div>
+
+    <div class="setting-row">
+      <div class="label"><i class="fa-solid fa-bell"></i> الإشعارات</div>
+      <label class="switch">
+        <input type="checkbox" id="permNotif" checked>
+        <span class="switch-slider"></span>
+      </label>
+    </div>
+
+    <div class="setting-row">
+      <div class="label"><i class="fa-solid fa-location-dot"></i> الموقع الجغرافي</div>
+      <label class="switch">
+        <input type="checkbox" id="permLocation">
+        <span class="switch-slider"></span>
+      </label>
+    </div>
+
+    <div class="section-title">أخرى</div>
+
+    <div class="setting-row" onclick="window.location.href='policy.html'">
+      <div class="label"><i class="fa-solid fa-shield-halved"></i> سياسة خصوصية</div>
+      <div class="value"><i class="fa-solid fa-chevron-left" style="font-size:0.7rem;"></i></div>
+    </div>
+
+    <button class="logout-btn" id="logoutBtn">تسجيل الخروج</button>
+  </main>
+
+  <!-- Language Modal -->
+  <div class="modal-backdrop" id="languageModal">
+    <div class="modal-sheet">
+      <div class="modal-title">لغة تطبيق</div>
+      <div class="modal-option" data-lang="ar"><span>العربية</span><i class="fa-solid fa-check check"></i></div>
+      <div class="modal-option" data-lang="en"><span>English</span><i class="fa-solid fa-check check"></i></div>
+      <div class="modal-option" data-lang="fr"><span>Français</span><i class="fa-solid fa-check check"></i></div>
+      <div class="modal-option" data-lang="es"><span>Español</span><i class="fa-solid fa-check check"></i></div>
+    </div>
+  </div>
+
+  <!-- Voice Modal -->
+  <div class="modal-backdrop" id="voiceModal">
+    <div class="modal-sheet">
+      <div class="modal-title">صوت AI</div>
+      <div id="voiceOptionsList"></div>
+    </div>
+  </div>
+
+  <!-- System Prompt Modal -->
+  <div class="modal-backdrop" id="systemPromptModal">
+    <div class="modal-sheet">
+      <div class="modal-title">توجيهات النظام</div>
+      <textarea class="modal-textarea" id="systemPromptInput" placeholder="مثال: تحدث معي بإسلوب رواقي..."></textarea>
+      <button class="modal-save-btn" id="saveSystemPrompt">حفظ</button>
+    </div>
+  </div>
+
+  <!-- Username Modal -->
+  <div class="modal-backdrop" id="usernameModal">
+    <div class="modal-sheet">
+      <div class="modal-title">إسم مستخدم</div>
+      <input type="text" class="modal-textarea" id="usernameInput" style="min-height:auto; padding:12px;" />
+      <button class="modal-save-btn" id="saveUsername">حفظ</button>
+    </div>
+  </div>
+
+  <script>
+    const currentUserId = localStorage.getItem('user_id');
+    if (!currentUserId) window.location.href = 'login.html';
+
+    let sbClient = null;
+    let currentProfile = {};
+
+    const VOICES = ['Puck', 'Charon', 'Kore', 'Fenrir', 'Zephyr'];
+    const LANG_LABELS = { ar: 'العربية', en: 'English', fr: 'Français', es: 'Español' };
+
+    async function initSupabase() {
+      try {
+        const res = await fetch('/api/Token.js');
+        const tokens = await res.json();
+        if (!tokens.SUPABASE_URL || !tokens.SUPABASE_ANON_KEY) return;
+        sbClient = window.supabase.createClient(tokens.SUPABASE_URL, tokens.SUPABASE_ANON_KEY);
+        loadProfile();
+      } catch (err) {
+        console.error('❌ فشل جلب التوكنات:', err);
+      }
+    }
+
+    async function loadProfile() {
+      if (!sbClient || !currentUserId) return;
+      const { data, error } = await sbClient
+        .from('vip_users')
+        .select('email, username, app_language, voice_name, custom_prompt')
+        .eq('id', currentUserId)
+        .single();
+
+      if (error || !data) return;
+      currentProfile = data;
+
+      document.getElementById('profileEmail').textContent = data.email || '';
+      document.getElementById('profileAvatar').textContent = (data.email || 'U').charAt(0).toUpperCase();
+
+      const uname = data.username || 'مستخدم';
+      document.getElementById('profileUsername').textContent = uname;
+      document.getElementById('usernameDisplay').textContent = uname;
+
+      const lang = data.app_language || 'en';
+      document.getElementById('languageDisplay').textContent = LANG_LABELS[lang] || 'English';
+
+      document.getElementById('voiceDisplay').textContent = data.voice_name || 'Puck';
+
+      document.getElementById('systemPromptInput').value = data.custom_prompt || '';
+    }
+
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    document.querySelectorAll('.modal-backdrop').forEach((backdrop) => {
+      backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) backdrop.classList.remove('active');
+      });
+    });
+
+    // ── إسم مستخدم ──
+    document.getElementById('usernameRow').addEventListener('click', () => {
+      document.getElementById('usernameInput').value = currentProfile.username || '';
+      openModal('usernameModal');
+    });
+
+    document.getElementById('saveUsername').addEventListener('click', async () => {
+      const newName = document.getElementById('usernameInput').value.trim();
+      if (!newName) return;
+      await sbClient.from('vip_users').update({ username: newName }).eq('id', currentUserId);
+      currentProfile.username = newName;
+      document.getElementById('usernameDisplay').textContent = newName;
+      document.getElementById('profileUsername').textContent = newName;
+      closeModal('usernameModal');
+    });
+
+    // ── لغة تطبيق ──
+    document.getElementById('languageRow').addEventListener('click', () => {
+      document.querySelectorAll('#languageModal .modal-option').forEach((opt) => {
+        opt.classList.toggle('selected', opt.dataset.lang === (currentProfile.app_language || 'en'));
+      });
+      openModal('languageModal');
+    });
+
+    document.querySelectorAll('#languageModal .modal-option').forEach((opt) => {
+      opt.addEventListener('click', async () => {
+        const lang = opt.dataset.lang;
+        await sbClient.from('vip_users').update({ app_language: lang }).eq('id', currentUserId);
+        currentProfile.app_language = lang;
+        document.getElementById('languageDisplay').textContent = LANG_LABELS[lang];
+        closeModal('languageModal');
+      });
+    });
+
+    // ── صوت AI ──
+    const voiceListEl = document.getElementById('voiceOptionsList');
+    VOICES.forEach((voice) => {
+      const opt = document.createElement('div');
+      opt.className = 'modal-option';
+      opt.dataset.voice = voice;
+      opt.innerHTML = `
+        <span>${voice}</span>
+        <span style="display:flex; align-items:center; gap:12px;">
+          <button class="voice-preview-btn" data-preview="${voice}"><i class="fa-solid fa-play"></i></button>
+          <i class="fa-solid fa-check check"></i>
+        </span>
+      `;
+      voiceListEl.appendChild(opt);
+    });
+
+    document.getElementById('voiceRow').addEventListener('click', () => {
+      document.querySelectorAll('#voiceModal .modal-option').forEach((opt) => {
+        opt.classList.toggle('selected', opt.dataset.voice === (currentProfile.voice_name || 'Puck'));
+      });
+      openModal('voiceModal');
+    });
+
+    voiceListEl.addEventListener('click', async (e) => {
+      const previewBtn = e.target.closest('.voice-preview-btn');
+      if (previewBtn) {
+        // ⚠️ الاستماع الحقيقي للصوت مرتبط بميزة المكالمة الصوتية (Gemini Live) لي مازال ماتبنات
+        alert('الاستماع للصوت غادي يخدم فاش تبنى ميزة المكالمة الصوتية');
+        return;
+      }
+      const opt = e.target.closest('.modal-option');
+      if (!opt) return;
+      const voice = opt.dataset.voice;
+      await sbClient.from('vip_users').update({ voice_name: voice }).eq('id', currentUserId);
+      currentProfile.voice_name = voice;
+      document.getElementById('voiceDisplay').textContent = voice;
+      closeModal('voiceModal');
+    });
+
+    // ── توجيهات النظام (custom_prompt) ──
+    document.getElementById('systemPromptRow').addEventListener('click', () => {
+      openModal('systemPromptModal');
+    });
+
+    document.getElementById('saveSystemPrompt').addEventListener('click', async () => {
+      const val = document.getElementById('systemPromptInput').value.trim();
+      await sbClient.from('vip_users').update({ custom_prompt: val }).eq('id', currentUserId);
+      currentProfile.custom_prompt = val;
+      closeModal('systemPromptModal');
+    });
+
+    // ── تسجيل الخروج ──
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      const confirmed = confirm('هل أنت متأكد تريد تسجيل الخروج؟');
+      if (!confirmed) return;
+      if (sbClient) await sbClient.auth.signOut();
+      localStorage.removeItem('user_id');
+      localStorage.removeItem('session_id');
+      localStorage.removeItem('current_conversation_id');
+      window.location.href = 'login.html';
+    });
+
+    window.addEventListener('DOMContentLoaded', initSupabase);
+  </script>
+</body>
+</html>
+
