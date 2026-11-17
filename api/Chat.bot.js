@@ -49,7 +49,11 @@ const BASE_SYSTEM_PROMPT = `
 `.trim();
 
 const HISTORY_LIMIT = 20;
-const GEMINI_MODEL = '​gemini-flash-lite-latest';
+
+// ✅ اسم الموديل: كتبتو من الصفر، وزدت عليه تنظيف أي حرف مخفي (zero-width) كحماية إضافية
+const GEMINI_MODEL = 'gemini-flash-lite-latest'
+  .replace(/[\u200B-\u200D\uFEFF]/g, '')
+  .trim();
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
